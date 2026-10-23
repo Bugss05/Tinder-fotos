@@ -2,7 +2,14 @@
 
 Treino local de um LoRA de identidade para o **Qwen-Image 2.1**, numa RX 9070 XT (16 GB) em Linux com ROCm. Usa o [musubi-tuner](https://github.com/kohya-ss/musubi-tuner) para treinar e o **Qwen3.5-9B** como VLM, tanto para legendar as fotos como para as descrever.
 
-O objetivo final é gerar fotos realistas com a minha cara. Este repo cobre a primeira fase: preparar o dataset, legendá-lo, treinar o LoRA e testá-lo.
+O objetivo final é gerar fotos realistas com a minha cara. Este repo cobre a primeira fase: preparar o dataset, legendá-lo, treinar o LoRA, testá-lo e exportá-lo para o ComfyUI.
+
+**Quem faz o quê:**
+
+| Modelo | Papel | Quando |
+|---|---|---|
+| Qwen3.5-9B (VLM) | Lê fotos e escreve texto: legendas e descrições. **Não gera imagens.** | Só antes do treino (passos 5 e 6) |
+| Qwen-Image 2.1 | Gera as imagens. É este que o LoRA ensina a desenhar a tua cara. | Treino, testes e depois no ComfyUI |
 
 ---
 
@@ -75,6 +82,12 @@ for f in output/lora_afnsx-step*.safetensors output/lora_afnsx.safetensors; do s
 ```
 Cada checkpoint gera as mesmas 5 imagens com as mesmas seeds, em `samples/`. Compara-os lado a lado e escolhe o melhor (normalmente não é o último).
 
+**Passo 10: levar o LoRA para o ComfyUI.**
+```bash
+scripts/08_export_comfyui.sh output/lora_afnsx-step00001250.safetensors ~/ComfyUI
+```
+Converte o checkpoint escolhido e copia-o para `~/ComfyUI/models/loras/`. Ver secção 8.
+
 ## 3. O que faz cada ficheiro
 
 **Configuração**
@@ -102,6 +115,7 @@ Cada checkpoint gera as mesmas 5 imagens com as mesmas seeds, em `samples/`. Com
 | `scripts/05_cache.sh` | Gera o `dataset.toml` e faz a cache dos latents (VAE) e dos embeddings (text encoder Qwen3-VL-8B em fp8). |
 | `scripts/06_train_lora.sh` | Treina o LoRA com o DiT em fp8, gradient checkpointing e block swap. Aceita `--resume`. |
 | `scripts/07_generate.sh` | Gera imagens de teste com um checkpoint e uma força (`multiplier`) à escolha. |
+| `scripts/08_export_comfyui.sh` | Converte o LoRA para o formato que o ComfyUI lê por inteiro e copia-o para lá (ver secção 8). |
 
 ## 4. Fotos: o que importa
 
@@ -144,14 +158,30 @@ output/              lora_afnsx-step00000250.safetensors
                      lora_afnsx-step00000500.safetensors
                      ...                              um checkpoint a cada 250 passos
                      lora_afnsx.safetensors           LoRA final (passo 2000)
+                     lora_afnsx-step..._comfyui.safetensors   versão para o ComfyUI (passo 10)
 logs/                                                 curvas de loss para o TensorBoard
 samples/<checkpoint>_x1.0/   *.png                    5 imagens de teste por checkpoint
 avaliacao.txt                                         se usaste o describe com -o
 ```
 
-O produto final é **um ficheiro `.safetensors` com algumas dezenas de MB** (rank 16). É o LoRA que vais carregar mais tarde, no musubi, no ComfyUI ou noutra ferramenta compatível com Qwen-Image 2.1, para gerar fotos com `afnsx man` no prompt.
+O produto final é **um ficheiro `.safetensors` com algumas dezenas de MB** (rank 16). É o LoRA que carregas no ComfyUI (ou no `07_generate.sh`) para gerar fotos com `afnsx man` no prompt.
 
-## 8. Problemas conhecidos
+## 8. Depois do treino: usar no ComfyUI
+
+O ComfyUI é a interface de nós (caixas ligadas por setas) que corre localmente e abre no browser. O LoRA treinado aqui funciona lá, mas **tem de ser convertido primeiro** com o `08_export_comfyui.sh`.
+
+Porquê: o ComfyUI carrega o Qwen-Image 2.1 com duas camadas de cada MLP fundidas numa só (`gate_up`). No formato nativo do musubi, o ComfyUI não reconhece essas duas camadas e ignora-as **sem dar erro**. O LoRA carregava, mas mais fraco (testei o mapeamento de chaves do ComfyUI: só 5 de 7 camadas por bloco entravam). Depois de convertido entram as 7.
+
+No ComfyUI:
+1. Base do Qwen-Image 2.1 em `models/diffusion_models/` (bf16 ou Q8_0 GGUF; os pesos do Hugging Face usados para treinar estão noutro formato e não servem diretamente), text encoder fp8 em `models/text_encoders/` e VAE em `models/vae/`.
+2. LoRA convertido em `models/loras/`.
+3. No workflow do Qwen-Image 2.1, mete um nó **LoraLoaderModelOnly** entre o loader do modelo e o sampler, com força entre 0.8 e 1.0.
+4. Prompt com o trigger: `a photo of afnsx man ...`.
+5. Para iterar mais depressa podes juntar um LoRA turbo do 2.1, mas como LoRA separado e nunca fundido no modelo. Para as fotos finais, tira-o e usa os ~40 passos normais.
+
+O ComfyUI pode correr no mesmo Linux (com o PyTorch ROCm) ou no Windows. O ficheiro do LoRA é o mesmo.
+
+## 9. Problemas conhecidos
 
 - `hipErrorNoBinaryForGpu`: o ROCm do sistema não bate certo com as wheels (7.2.1). Atualiza o ROCm ou muda `ROCM_WHEEL_BASE` e `ROCM_WHEELS` no `config.env`.
 - Erro de numpy ao importar o torch: `uv pip install "numpy<2"` com o venv ativo.
