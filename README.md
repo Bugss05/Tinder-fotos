@@ -65,6 +65,17 @@ scripts/describe.sh data/train -q "Avalia de 1 a 10 para um dataset de LoRA de i
 ```
 
 **Passo 6: legendar.**
+
+Primeiro, os factos que variam entre fotos e que a VLM não consegue adivinhar (corte antigo, barba que nem sempre tens, óculos):
+```bash
+cp configs/caption_hints.example.txt configs/caption_hints.txt   # e edita
+```
+Depois testa em poucas fotos, sem gravar nada:
+```bash
+scripts/04_caption.sh --preview 5            # vê as legendas
+scripts/04_caption.sh --preview 1 --debug    # vê o texto exato e a imagem que entram no modelo
+```
+Se não gostares, muda o `configs/caption_prompt.txt` e repete. Quando estiver bem:
 ```bash
 scripts/04_caption.sh
 ```
@@ -104,6 +115,8 @@ Converte o checkpoint escolhido e copia-o para `~/ComfyUI/models/loras/`. Ver se
 | `models.env` | Gerado pelo passo 3. Guarda onde ficaram os modelos no disco. Não vai para o git. |
 | `configs/test_prompts.template.txt` | Prompts usados pelo `07_generate.sh`. Inclui um prompt **sem** trigger para detetar overfit. `{TRIGGER}` e `{CLASS}` são substituídos automaticamente. |
 | `configs/sample_prompts.template.txt` | Igual, mas para amostras durante o treino (desligado por defeito). |
+| `configs/caption_prompt.txt` | Instruções que a VLM recebe para cada legenda. Edita para mudar o estilo. |
+| `configs/caption_hints.txt` | Factos por foto que têm de entrar na legenda (ver o `.example`). Não vai para o git. |
 | `configs/dataset.toml` | Gerado pelo `05_cache.sh`. Diz ao musubi onde estão as fotos, a cache e a resolução. |
 
 **Scripts (por ordem de uso)**
@@ -117,7 +130,7 @@ Converte o checkpoint escolhido e copia-o para `~/ComfyUI/models/loras/`. Ver se
 | `scripts/select_photos.py` | Copia as fotos escolhidas a partir de um txt com números (`IMG_0123.JPG` = `123`; aceita intervalos `120-130`). Usar antes do passo 4 para encher a pasta `DATASET_SRC`. |
 | `scripts/03_prepare_dataset.sh` + `prepare_dataset.py` | Corrige a rotação EXIF, converte para RGB, limita o lado maior a 1536 px, deteta quase-duplicados (rajadas) com um hash perceptual, avisa sobre fotos pequenas ou desfocadas, e cria a legenda base. |
 | `scripts/vlm.py` | Carrega a VLM e quantiza-a para FP8 (ver secção 5). Usado pelos dois scripts abaixo. |
-| `scripts/04_caption.sh` + `caption.py` | Legenda cada foto com um prompt que descreve roupa, sítio, luz e pose, mas **não** a cara nem o corpo, e mete o trigger no sítio de "the man". Por defeito só mexe nas legendas que ainda são a base. |
+| `scripts/04_caption.sh` + `caption.py` | Legenda cada foto com a VLM. O prompt está em `configs/caption_prompt.txt` e os factos por foto em `configs/caption_hints.txt`. No fim avisa sobre legendas com palavras de identidade (olhos, pele, cabelo...). `--preview N` mostra sem gravar e `--debug` mostra o input exato. |
 | `scripts/describe.sh` + `describe.py` | VLM de uso geral: descreve uma foto ou uma pasta, responde a perguntas (`-q`), grava respostas (`-o`), ou modo interativo (`-i`) para fazer vários pedidos sem recarregar o modelo. Responde em português. |
 | `scripts/05_cache.sh` | Gera o `dataset.toml` e faz a cache dos latents (VAE) e dos embeddings (text encoder Qwen3-VL-8B em fp8). |
 | `scripts/06_train_lora.sh` | Treina o LoRA com o DiT em fp8, gradient checkpointing e block swap. Aceita `--resume`. |

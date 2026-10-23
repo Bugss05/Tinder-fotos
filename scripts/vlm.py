@@ -108,7 +108,7 @@ def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str |
 
 @torch.inference_mode()
 def ask(model, processor, image: Image.Image | None, prompt: str, max_new_tokens: int = 256,
-        max_side: int = 1280) -> str:
+        max_side: int = 1280, debug: bool = False) -> str:
     """Uma pergunta, com ou sem imagem. Modo 'thinking' desligado, saída determinística."""
     content = []
     if image is not None:
@@ -124,6 +124,14 @@ def ask(model, processor, image: Image.Image | None, prompt: str, max_new_tokens
     except TypeError:  # modelos sem modo thinking (ex.: Qwen3-VL)
         inputs = processor.apply_chat_template(messages, **template_kwargs)
     inputs = inputs.to(model.device)
+    if debug:
+        ids = inputs["input_ids"][0]
+        print("  [debug] texto enviado ao modelo:")
+        print("    " + processor.decode(ids, skip_special_tokens=False).replace("\n", "\n    ")[:4000])
+        if image is not None:
+            grid = inputs.get("image_grid_thw")
+            print(f"  [debug] imagem: {image.size[0]}x{image.size[1]} px | grelha de patches (t,h,w): "
+                  f"{grid.tolist() if grid is not None else 'NENHUMA: a imagem não chegou ao modelo!'}")
 
     out = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False, repetition_penalty=1.05)
     text = processor.batch_decode(out[:, inputs["input_ids"].shape[1]:], skip_special_tokens=True)[0]

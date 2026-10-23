@@ -1,0 +1,8 @@
+# Factos por foto que a VLM tem de incluir na legenda (copia para caption_hints.txt).
+# Formato:  <número da foto, nome original ou img_XXX>: <factos>
+# Usa para o que VARIA entre fotos e NÃO deve ficar colado a ti:
+# o corte antigo, barba que nem sempre tens, óculos, etc.
+# O que é sempre igual (o corte atual) NÃO se escreve: é isso que o trigger aprende.
+123: old haircut, longer hair on top
+IMG_0456.JPG: short beard
+img_007: wearing glasses

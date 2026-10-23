@@ -71,6 +71,7 @@ def main() -> int:
 
     base_caption = f"a photo of {args.trigger} {args.class_word}"
     kept: list[tuple[str, int]] = []
+    sources: list[tuple[str, str]] = []
     warnings: list[str] = []
     skipped_dup = 0
 
@@ -115,7 +116,9 @@ def main() -> int:
         caption = src_caption.read_text(encoding="utf-8").strip() if src_caption.exists() else base_caption
         (dst / f"{name}.txt").write_text(caption + "\n", encoding="utf-8")
         kept.append((f"{name} ({path.name})", h))
+        sources.append((name, path.name))
 
+    (dst / "sources.tsv").write_text("".join(f"{a}\t{b}\n" for a, b in sources), encoding="utf-8")
     n = len(kept)
     print(f"\n{n} imagens preparadas em {dst}  ({skipped_dup} duplicados ignorados)")
     for w in warnings:

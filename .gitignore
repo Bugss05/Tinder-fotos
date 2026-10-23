@@ -20,3 +20,4 @@ logs/
 configs/dataset.toml
 configs/sample_prompts.txt
 configs/test_prompts.txt
+configs/caption_hints.txt
