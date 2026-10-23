@@ -126,7 +126,9 @@ def main() -> int:
     if n < 15:
         print("\n[aviso] Menos de 15 fotos: a identidade pode não ficar sólida.")
     elif n > 80:
-        print("\n[aviso] Mais de 80 fotos: considera tirar as piores; qualidade > quantidade.")
+        print(f"\n[nota] {n} fotos: está bem se forem variadas. Confirma só que não há grupos grandes de\n"
+              "       fotos quase iguais (mesma roupa + fundo + pose); desses, fica com as melhores 8-10.\n"
+              "       Com muitas fotos, considera subir MAX_TRAIN_STEPS no config.env (ex.: 3000).")
     return 0
 
 
