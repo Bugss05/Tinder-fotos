@@ -40,18 +40,20 @@ swap_gb=$(awk '/SwapTotal/ {printf "%d", $2/1024/1024}' /proc/meminfo)
 echo "  Swap: ${swap_gb} GB"
 (( swap_gb >= 16 )) || warn "Recomendo >=16 GB de swap como rede de segurança no carregamento dos modelos."
 
-free_at() { local p="$1"; while [[ ! -e "$p" ]]; do p=$(dirname "$p"); done; df -BG --output=avail "$p" | tail -1 | tr -dc '0-9'; }
+existing() { local p="$1"; while [[ ! -e "$p" ]]; do p=$(dirname "$p"); done; echo "$p"; }
+free_at() { df -BG --output=avail "$(existing "$1")" | tail -1 | tr -dc '0-9'; }
+dev_of()  { df --output=source "$(existing "$1")" | tail -1; }
 hf_home="${HF_HOME:-$HOME/.cache/huggingface}"
 repo_gb=$(free_at "$REPO_ROOT"); hf_gb=$(free_at "$hf_home")
 echo "  Disco livre no repo: ${repo_gb} GB (venv ~10 GB + cache + checkpoints; precisa de >=20)"
 echo "  Disco livre para modelos ($hf_home): ${hf_gb} GB (Qwen-Image ~47 GB + VLM ~19 GB)"
 (( repo_gb >= 20 )) || warn "Pouco espaço para o venv e os checkpoints."
-if [[ "$(df --output=source "$REPO_ROOT" | tail -1)" == "$(df --output=source "$(dirname "$hf_home")" 2>/dev/null | tail -1)" ]]; then
+if [[ "$(dev_of "$REPO_ROOT")" == "$(dev_of "$hf_home")" ]]; then
   (( hf_gb >= 100 )) || warn "Modelos e venv no mesmo disco com <100 GB livres. Aponta HF_HOME para outro disco."
 else
   (( hf_gb >= 75 )) || warn "Pouco espaço para os modelos em $hf_home."
-  [[ -w "$(dirname "$hf_home")" || -w "$hf_home" ]] || warn "Sem permissão de escrita em $hf_home."
 fi
+[[ -w "$(existing "$hf_home")" ]] || warn "Sem permissão de escrita em $(existing "$hf_home") (HF_HOME=$hf_home)."
 
 echo
 if (( ok )); then
