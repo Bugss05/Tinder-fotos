@@ -13,8 +13,7 @@ VENV_DIR="$REPO_ROOT/.venv"
 MODELS_ENV="$REPO_ROOT/models.env"
 
 # ---------- Ambiente ROCm ----------
-# Reduz fragmentação da VRAM (importante com block swap).
-export PYTORCH_HIP_ALLOC_CONF="${PYTORCH_HIP_ALLOC_CONF:-expandable_segments:True}"
+# (expandable_segments não é suportado nesta versão do ROCm: só gerava um aviso.)
 # Ativa os kernels AOTriton (flash / mem-efficient SDPA) em RDNA.
 export TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL="${TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL:-1}"
 # Evita que o MIOpen passe minutos a fazer tuning das convoluções do VAE.

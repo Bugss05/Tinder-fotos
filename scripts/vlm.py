@@ -26,6 +26,10 @@ from PIL import Image
 FP8 = torch.float8_e4m3fn
 FP8_MAX = torch.finfo(FP8).max  # 448
 MIN_PARAMS_TO_QUANTIZE = 1_000_000  # camadas pequenas (gates, etc.) ficam em bf16
+# O lm_head (vocabulário de 248k x 4096 = 1B params) fica em bf16: em FP8 seria
+# desquantizado inteiro (2 GB temporários) a cada token gerado. Em bf16 ocupa
+# 2 GB fixos e é mais rápido.
+SKIP_SUFFIXES = ("lm_head",)
 
 
 class FP8Linear(nn.Module):
@@ -36,10 +40,20 @@ class FP8Linear(nn.Module):
         self.in_features = linear.in_features
         self.out_features = linear.out_features
         self.compute_dtype = compute_dtype
-        w = linear.weight.detach().to(device=device, dtype=torch.float32)
-        scale = (w.abs().amax(dim=1, keepdim=True) / FP8_MAX).clamp(min=1e-12)
-        self.register_buffer("weight_fp8", (w / scale).to(FP8))
-        self.register_buffer("weight_scale", scale.to(compute_dtype))
+        w = linear.weight.detach()
+        out_f, in_f = w.shape
+        q = torch.empty(out_f, in_f, dtype=FP8, device=device)
+        scale = torch.empty(out_f, 1, dtype=compute_dtype, device=device)
+        # Por blocos de linhas: o float32 temporário nunca passa de ~256 MB na GPU.
+        rows = max(1, (64 * 2**20) // in_f)
+        for i in range(0, out_f, rows):
+            wc = w[i:i + rows].to(device=device, dtype=torch.float32)
+            s = (wc.abs().amax(dim=1, keepdim=True) / FP8_MAX).clamp(min=1e-12)
+            q[i:i + rows] = (wc / s).to(FP8)
+            scale[i:i + rows] = s.to(compute_dtype)
+            del wc, s
+        self.register_buffer("weight_fp8", q)
+        self.register_buffer("weight_scale", scale)
         bias = linear.bias.detach().to(device=device, dtype=compute_dtype) if linear.bias is not None else None
         self.register_buffer("bias", bias)
 
@@ -65,6 +79,7 @@ def quantize_to_fp8_(model: nn.Module, device: torch.device) -> tuple[int, int]:
         name
         for name, mod in model.named_modules()
         if isinstance(mod, nn.Linear) and mod.weight.numel() >= MIN_PARAMS_TO_QUANTIZE
+        and not name.endswith(SKIP_SUFFIXES)
     ]
     n_params = 0
     for name in tqdm(names, desc="A quantizar para FP8 (RAM -> GPU)", unit="camada"):
