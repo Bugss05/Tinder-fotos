@@ -9,7 +9,19 @@ check() { if eval "$2" >/dev/null 2>&1; then echo "  [ok]   $1"; else echo "  [F
 log "Sistema"
 check "Linux x86_64"                  '[[ "$(uname -sm)" == "Linux x86_64" ]]'
 check "rocminfo instalado (ROCm)"    'command -v rocminfo'
-check "GPU gfx1201 (RX 9070 XT) visível no ROCm" 'rocminfo | grep -q gfx1201'
+# Guarda o output primeiro: com `set -o pipefail`, `rocminfo | grep -q` falha
+# por SIGPIPE quando o grep sai cedo, mesmo que a GPU lá esteja.
+rocm_out=$(rocminfo 2>&1 || true)
+check "GPU gfx1201 (RX 9070 XT) visível no ROCm" 'grep -q gfx1201 <<<"$rocm_out"'
+gpus=$(grep -o 'gfx[0-9a-f]\+' <<<"$rocm_out" | sort -u | tr '\n' ' ')
+echo "  GPUs vistas pelo ROCm: ${gpus:-nenhuma}"
+if [[ -z "$gpus" ]]; then
+  echo "  diagnóstico:"
+  [[ -e /dev/kfd ]] && echo "    /dev/kfd existe" || echo "    /dev/kfd NÃO existe (driver amdgpu/KFD não carregado)"
+  lsmod | grep -q '^amdgpu' && echo "    módulo amdgpu carregado" || echo "    módulo amdgpu NÃO carregado"
+  echo "    kernel: $(uname -r)  (RDNA4 precisa de >= 6.12 ou do amdgpu-dkms do ROCm)"
+  grep -m3 -i 'error\|permission\|denied' <<<"$rocm_out" | sed 's/^/    rocminfo: /'
+fi
 check "utilizador no grupo render"   'id -nG | grep -qw render'
 check "utilizador no grupo video"    'id -nG | grep -qw video'
 check "uv instalado"                 'command -v uv'
@@ -29,8 +41,8 @@ echo "  Swap: ${swap_gb} GB"
 (( swap_gb >= 16 )) || warn "Recomendo >=16 GB de swap como rede de segurança no carregamento dos modelos."
 
 free_gb=$(df -BG --output=avail "$REPO_ROOT" | tail -1 | tr -dc '0-9')
-echo "  Disco livre aqui: ${free_gb} GB (modelos ~55 GB + venv ~10 GB + cache)"
-(( free_gb >= 80 )) || warn "Pouco espaço. O HF cache fica em \${HF_HOME:-~/.cache/huggingface}; muda HF_HOME se precisares."
+echo "  Disco livre aqui: ${free_gb} GB (Qwen-Image ~47 GB + VLM ~19 GB + venv ~10 GB + checkpoints)"
+(( free_gb >= 100 )) || warn "Pouco espaço. O HF cache fica em \${HF_HOME:-~/.cache/huggingface}; muda HF_HOME se precisares."
 
 echo
 if (( ok )); then

@@ -27,6 +27,7 @@ else
     local_wheels+=("$wheel_dir/$file")
   done
   uv pip install "${local_wheels[@]}"
+  rm -rf "$wheel_dir"   # ~5 GB que já não fazem falta
 fi
 
 # ---------- musubi-tuner ----------
