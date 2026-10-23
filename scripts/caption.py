@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import time
 from pathlib import Path
 
 from PIL import Image
@@ -136,8 +137,11 @@ def main() -> int:
     for i, img_path in enumerate(todo, 1):
         hint = hints.get(img_path.stem)
         prompt = build_prompt(template, hint)
+        print(f"[{i}/{len(todo)}] {img_path.name}: a gerar...", end="\r", flush=True)
+        t_img = time.time()
         with Image.open(img_path) as im:
             desc = " ".join(ask(model, processor, im, prompt, args.max_new_tokens, debug=args.debug).split())
+        dt = time.time() - t_img
         caption = with_trigger(desc, prefix) if desc else base_caption
         bad = audit(caption, hint)
         if bad:
@@ -145,7 +149,9 @@ def main() -> int:
         if not args.preview:
             img_path.with_suffix(".txt").write_text(caption + "\n", encoding="utf-8")
         tag = f"  <-- rever: {', '.join(bad)}" if bad else ""
-        print(f"[{i}/{len(todo)}] {img_path.name}{' (hint: ' + hint + ')' if hint else ''}\n    {caption}{tag}")
+        eta = dt * (len(todo) - i)
+        print(f"[{i}/{len(todo)}] {img_path.name} ({dt:.0f}s, faltam ~{eta / 60:.0f} min)"
+              f"{' (hint: ' + hint + ')' if hint else ''}\n    {caption}{tag}")
 
     print()
     if args.preview:

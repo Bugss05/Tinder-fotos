@@ -15,6 +15,7 @@ Custo: um pouco mais lento que bf16 puro; perda de qualidade desprezável
 from __future__ import annotations
 
 import gc
+import time
 from pathlib import Path
 
 import torch
@@ -57,21 +58,24 @@ class FP8Linear(nn.Module):
 
 def quantize_to_fp8_(model: nn.Module, device: torch.device) -> tuple[int, int]:
     """Troca, no sítio, cada nn.Linear grande por FP8Linear já na GPU.
-    Vai camada a camada para a RAM e a VRAM nunca terem o modelo inteiro em bf16."""
-    targets = [
-        (name, mod)
+    Vai camada a camada: a camada bf16 é libertada da RAM logo a seguir."""
+    from tqdm import tqdm
+
+    names = [
+        name
         for name, mod in model.named_modules()
         if isinstance(mod, nn.Linear) and mod.weight.numel() >= MIN_PARAMS_TO_QUANTIZE
     ]
     n_params = 0
-    for name, mod in targets:
+    for name in tqdm(names, desc="A quantizar para FP8 (RAM -> GPU)", unit="camada"):
         parent_name, _, child = name.rpartition(".")
         parent = model.get_submodule(parent_name) if parent_name else model
+        mod = getattr(parent, child)
         n_params += mod.weight.numel()
         setattr(parent, child, FP8Linear(mod, device))
-        del mod
+        del mod  # sem outras referências: a RAM desta camada é libertada já
     gc.collect()
-    return len(targets), n_params
+    return len(names), n_params
 
 
 def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str | Path | None = None):
@@ -88,13 +92,20 @@ def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str |
         raise RuntimeError("GPU não disponível no PyTorch (ROCm). Corre scripts/00_check_system.sh")
     device = torch.device("cuda")
 
+    t0 = time.time()
+    step = lambda msg: print(f"[{time.time() - t0:5.0f}s] {msg}", flush=True)  # noqa: E731
+    step(f"A ler os pesos de {model_dir}")
+    step("(~19 GB; num disco mecânico pode levar 3-5 min sem mais mensagens. Vê a RAM a subir com: free -h)")
+
     if precision == "bf16":
         model = AutoVLM.from_pretrained(model_dir, dtype=torch.bfloat16, device_map="cuda")
     else:
         # Carrega em bf16 na RAM (~19 GB para o 9B), quantiza camada a camada
         # diretamente para a GPU, e só depois move o resto (embeddings, norms, convs).
         model = AutoVLM.from_pretrained(model_dir, dtype=torch.bfloat16, device_map="cpu")
+        step("Pesos na RAM. A quantizar camada a camada para a GPU")
         n, p = quantize_to_fp8_(model, device)
+        step("A mover o resto (embeddings, normalizações) para a GPU")
         model.to(device)
         gc.collect()
         print(f"FP8: {n} camadas Linear ({p / 1e9:.2f}B params) quantizadas")
@@ -102,7 +113,7 @@ def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str |
     model.eval()
     processor = AutoProcessor.from_pretrained(processor_dir or model_dir)
     used = torch.cuda.memory_allocated() / 2**30
-    print(f"VLM carregada ({precision}), VRAM em uso: {used:.1f} GiB")
+    step(f"VLM carregada ({precision}), VRAM em uso: {used:.1f} GiB")
     return model, processor
 
 
