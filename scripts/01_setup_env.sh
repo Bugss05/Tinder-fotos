@@ -40,7 +40,9 @@ git -C "$MUSUBI_DIR" checkout --quiet "$MUSUBI_COMMIT"
 log "musubi-tuner em $(git -C "$MUSUBI_DIR" log -1 --format='%h %s')"
 
 # Instala o musubi sem deixar o resolver trocar o torch ROCm por um CUDA.
-torch_pin="torch==$(python -c 'import torch; print(torch.__version__)')"
+# Versão do PACOTE instalado (importlib.metadata), não torch.__version__: nas wheels da
+# AMD diferem (".lw."), e pinar a de __version__ torna a resolução impossível.
+torch_pin="torch==$(python -c 'import importlib.metadata as m; print(m.version("torch"))')"
 log "A instalar dependências do musubi-tuner (mantendo $torch_pin)"
 uv pip install -e "$MUSUBI_DIR" "$torch_pin"
 
