@@ -46,9 +46,8 @@ torch_pin="torch==$(python -c 'import importlib.metadata as m; print(m.version("
 log "A instalar dependências do musubi-tuner (mantendo $torch_pin)"
 uv pip install -e "$MUSUBI_DIR" "$torch_pin"
 
-# Logs do treino. (O CLI `hf` já vem com o huggingface-hub do musubi.)
+# Logs do treino.
 uv pip install tensorboard "$torch_pin"
-command -v hf >/dev/null || die "CLI 'hf' não encontrado no venv"
 
 # ---------- accelerate ----------
 python - <<'EOF'

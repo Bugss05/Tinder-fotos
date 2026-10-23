@@ -12,13 +12,16 @@ with_vlm=1
 [[ "${1:-}" == "--no-vlm" ]] && with_vlm=0
 
 log "A descarregar $QWEN_IMAGE_REPO (pode demorar, retoma se interromperes)"
-qwen_dir=$(hf download "$QWEN_IMAGE_REPO" --exclude "assets/*" | tail -n1)
+# hf_fetch.py em vez do CLI `hf`: o output do CLI muda entre versões
+# (ex.: acaba em "path: ..."), a API devolve só o caminho.
+qwen_dir=$(python scripts/hf_fetch.py "$QWEN_IMAGE_REPO" "assets/*")
 [[ -d "$qwen_dir/transformer" ]] || die "Download incompleto: $qwen_dir"
 
 vlm_dir=""
 if (( with_vlm )); then
   log "A descarregar $VLM_REPO"
-  vlm_dir=$(hf download "$VLM_REPO" | tail -n1)
+  vlm_dir=$(python scripts/hf_fetch.py "$VLM_REPO")
+  [[ -f "$vlm_dir/config.json" ]] || die "Download incompleto: $vlm_dir"
 fi
 
 cat > "$MODELS_ENV" <<EOF
