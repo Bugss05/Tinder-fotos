@@ -51,7 +51,7 @@ scripts/02_download_models.sh
 
 Se escolheste as fotos por número, copia-as primeiro para a pasta `DATASET_SRC`:
 ```bash
-python3 scripts/select_photos.py escolhidas.txt /media/bugss/EOS_DIGITAL/DCIM ~/fotos-lora
+python3 scripts/select_photos.py escolhidas.txt <pasta-das-fotos> ~/fotos-lora
 ```
 
 ```bash
@@ -127,7 +127,7 @@ Converte o checkpoint escolhido e copia-o para `~/ComfyUI/models/loras/`. Ver se
 | `scripts/00_check_system.sh` | Verifica ROCm, GPU gfx1201, grupos, RAM, swap e disco. Não instala nada. |
 | `scripts/01_setup_env.sh` | Cria `.venv` com Python 3.12, instala o PyTorch ROCm da AMD, clona o musubi-tuner no commit fixado e instala-o sem deixar trocar o torch por um de CUDA. Acaba com um teste real na GPU. |
 | `scripts/02_download_models.sh` | Descarrega o Qwen-Image 2.1 e o Qwen3.5-9B para o cache do Hugging Face e escreve o `models.env`. |
-| `scripts/select_photos.py` | Copia as fotos escolhidas a partir de um txt com números (`IMG_0123.JPG` = `123`; aceita intervalos `120-130`). Usar antes do passo 4 para encher a pasta `DATASET_SRC`. |
+| `scripts/select_photos.py` | Copia as fotos escolhidas a partir de um txt. Cada entrada pode ser um número (`123` encontra `IMG_0123.JPG`, `DSC_0123.jpg`...), um intervalo (`120-130`) ou o nome do ficheiro. Usar antes do passo 4 para encher a pasta `DATASET_SRC`. |
 | `scripts/03_prepare_dataset.sh` + `prepare_dataset.py` | Corrige a rotação EXIF, converte para RGB, limita o lado maior a 1536 px, deteta quase-duplicados (rajadas) com um hash perceptual, avisa sobre fotos pequenas ou desfocadas, e cria a legenda base. |
 | `scripts/vlm.py` | Carrega a VLM e quantiza-a para FP8 (ver secção 5). Usado pelos dois scripts abaixo. |
 | `scripts/04_caption.sh` + `caption.py` | Legenda cada foto com a VLM. O prompt está em `configs/caption_prompt.txt` e os factos por foto em `configs/caption_hints.txt`. No fim avisa sobre legendas com palavras de identidade (olhos, pele, cabelo...). `--preview N` mostra sem gravar e `--debug` mostra o input exato. |

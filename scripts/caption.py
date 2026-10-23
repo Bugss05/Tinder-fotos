@@ -59,9 +59,9 @@ def load_hints(path: Path | None, data_dir: Path) -> dict[str, str]:
                 ds, orig = line.split("\t", 1)
                 by_orig[orig.lower()] = ds
                 by_orig[Path(orig).stem.lower()] = ds
-                m = re.search(r"(\d+)", Path(orig).stem)
-                if m:
-                    by_num.setdefault(int(m.group(1)), ds)
+                nums = re.findall(r"\d+", Path(orig).stem)  # mesma regra do select_photos.py
+                if nums:
+                    by_num.setdefault(int(nums[-1]), ds)
     hints: dict[str, str] = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.split("#", 1)[0].strip()
