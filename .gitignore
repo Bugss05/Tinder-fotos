@@ -1,0 +1,22 @@
+# Ambiente e dependências
+.venv/
+.wheels/
+musubi-tuner/
+models.env
+__pycache__/
+
+# Dados pessoais e pesados: nunca vão para o GitHub (o repo é público)
+data/
+output/
+samples/
+logs/
+*.safetensors
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# Gerados a partir dos templates
+configs/dataset.toml
+configs/sample_prompts.txt
+configs/test_prompts.txt

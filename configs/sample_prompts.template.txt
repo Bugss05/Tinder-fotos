@@ -1,0 +1,6 @@
+# Uma linha por imagem. {TRIGGER} e {CLASS} são substituídos pelo config.env.
+# Opções por linha: --w --h (múltiplos de 32), --d seed, --s passos.
+a photo of {TRIGGER} {CLASS} sitting at a cafe terrace in Porto, natural afternoon light, candid, shot on a 50mm lens --w 832 --h 1216 --d 1 --s 30
+close-up portrait of {TRIGGER} {CLASS} smiling, soft window light, shallow depth of field --w 1024 --h 1024 --d 2 --s 30
+# Controlo: sem trigger. Se esta cara se parecer contigo, o LoRA está a "vazar" (overfit).
+a photo of a {CLASS} sitting at a cafe terrace in Porto, natural afternoon light, candid --w 832 --h 1216 --d 1 --s 30
