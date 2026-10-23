@@ -13,6 +13,7 @@ load_models
 compgen -G "$CACHE_DIR/*.safetensors" >/dev/null || die "Cache vazia. Corre scripts/05_cache.sh"
 
 mkdir -p "$OUTPUT_DIR" logs
+warm_cache "$DIT_PATH"
 
 extra=()
 if (( BLOCKS_TO_SWAP > 0 )); then

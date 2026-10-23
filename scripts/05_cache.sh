@@ -36,6 +36,7 @@ python "$MUSUBI_DIR/src/musubi_tuner/qwen_image_21_cache_latents.py" \
   --vae_tiling
 
 log "Cache do text encoder (Qwen3-VL-8B em fp8)"
+warm_cache "$TE_PATH"
 python "$MUSUBI_DIR/src/musubi_tuner/qwen_image_21_cache_text_encoder_outputs.py" \
   --dataset_config configs/dataset.toml \
   --text_encoder "$TE_PATH" \

@@ -93,6 +93,22 @@ def quantize_to_fp8_(model: nn.Module, device: torch.device) -> tuple[int, int]:
     return len(names), n_params
 
 
+def warm_cache(model_dir: str | Path) -> None:
+    """Lê os .safetensors de seguida (leitura sequencial) para a cache da RAM.
+    Sem isto, os pesos são lidos aos saltos, pela ordem das camadas, o que num
+    disco mecânico pode ser 5-10x mais lento. Uma 2.ª execução logo a seguir é
+    quase instantânea (já está em cache)."""
+    from tqdm import tqdm
+
+    files = sorted(Path(model_dir).rglob("*.safetensors"))
+    total = sum(f.stat().st_size for f in files)
+    with tqdm(total=total, unit="B", unit_scale=True, desc="A ler do disco para a RAM") as bar:
+        for f in files:
+            with open(f, "rb", buffering=0) as fh:
+                while chunk := fh.read(64 * 2**20):
+                    bar.update(len(chunk))
+
+
 def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str | Path | None = None):
     """Carrega modelo + processor. precision: 'fp8' (defeito) ou 'bf16'.
     processor_dir: só se o processor não estiver na pasta do modelo."""
@@ -110,7 +126,7 @@ def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str |
     t0 = time.time()
     step = lambda msg: print(f"[{time.time() - t0:5.0f}s] {msg}", flush=True)  # noqa: E731
     step(f"A ler os pesos de {model_dir}")
-    step("(~19 GB; num disco mecânico pode levar 3-5 min sem mais mensagens. Vê a RAM a subir com: free -h)")
+    warm_cache(model_dir)
 
     if precision == "bf16":
         model = AutoVLM.from_pretrained(model_dir, dtype=torch.bfloat16, device_map="cuda")

@@ -47,3 +47,17 @@ load_vlm_dir() {
   source "$MODELS_ENV"
   [[ -n "${VLM_DIR:-}" && -d "$VLM_DIR" ]] || die "VLM em falta. Corre scripts/02_download_models.sh (sem --no-vlm)."
 }
+
+# Lê ficheiros de pesos de seguida para a cache da RAM antes de o musubi os abrir.
+# Num disco mecânico evita leituras aos saltos (5-10x mais lentas).
+warm_cache() {
+  local files=()
+  for p in "$@"; do
+    if [[ -d "$p" ]]; then while IFS= read -r -d '' f; do files+=("$f"); done < <(find "$p" -name '*.safetensors' -print0 | sort -z)
+    elif [[ -f "$p" ]]; then files+=("$p"); fi
+  done
+  (( ${#files[@]} )) || return 0
+  log "A ler ${#files[@]} ficheiros de pesos para a RAM ($(du -chL "${files[@]}" | tail -1 | cut -f1))"
+  if command -v pv >/dev/null; then cat "${files[@]}" | pv -s "$(du -cbL "${files[@]}" | tail -1 | cut -f1)" > /dev/null
+  else cat "${files[@]}" > /dev/null; fi
+}

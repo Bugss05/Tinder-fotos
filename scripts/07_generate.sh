@@ -14,6 +14,8 @@ lora="${1:-}"; mult="${2:-1.0}"
 
 out="samples/$(basename "${lora%.safetensors}")_x${mult}"
 mkdir -p "$out" configs
+# Só o que é carregado primeiro: os três juntos (~33 GB) não cabem na cache da RAM.
+warm_cache "$TE_PATH" "$VAE_PATH"
 sed "s/{TRIGGER}/$TRIGGER/g; s/{CLASS}/$CLASS_WORD/g" configs/test_prompts.template.txt > configs/test_prompts.txt
 
 log "A gerar para $(basename "$lora") (x$mult) em $out"
