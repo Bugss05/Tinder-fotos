@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Gera legendas com Qwen3-VL-4B (~9 GB VRAM em bf16).
+# Gera legendas com a VLM (Qwen3.5-9B em FP8, ~12 GB de VRAM).
 # Depois LÊ as legendas e corrige à mão; é o passo que mais pesa na qualidade.
 # Argumentos extra passam para o caption.py (ex.: --overwrite).
 source "$(dirname "$0")/common.sh"
 activate_venv
-source "$MODELS_ENV" 2>/dev/null || true
-[[ -n "${CAPTION_MODEL_DIR:-}" ]] || die "Modelo de captions em falta. Corre scripts/02_download_models.sh (sem --no-caption)."
+load_vlm_dir
 
 python scripts/caption.py \
   --dir "$DATA_DIR" \
-  --model "$CAPTION_MODEL_DIR" \
+  --model "$VLM_DIR" \
+  --precision "$VLM_PRECISION" ${VLM_PROCESSOR_DIR:+--processor "$VLM_PROCESSOR_DIR"} \
   --trigger "$TRIGGER" \
   --class-word "$CLASS_WORD" \
   "$@"

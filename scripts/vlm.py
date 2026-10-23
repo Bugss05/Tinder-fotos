@@ -1,0 +1,132 @@
+"""VLM partilhada pelo caption.py e pelo describe.py.
+
+Modelo por defeito: Qwen3.5-9B (9.65B, multimodal nativo, Apache-2.0).
+Em bf16 ocupa ~19 GB, não cabe nos 16 GB. Por isso as camadas Linear são
+guardadas em FP8 (float8_e4m3fn) com uma escala por canal de saída e
+desquantizadas para bf16 no momento do matmul ("weight-only FP8").
+
+Porque assim e não um checkpoint -FP8 oficial: esses usam kernels FP8
+"block-wise" (Triton/CUDA) que não estão garantidos em RDNA4. Este esquema
+só precisa de suportar o dtype float8, o que o 01_setup_env.sh já testa.
+Custo: um pouco mais lento que bf16 puro; perda de qualidade desprezável
+(erro relativo dos pesos ~2-3%, igual ao --fp8_scaled do musubi).
+"""
+
+from __future__ import annotations
+
+import gc
+from pathlib import Path
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from PIL import Image
+
+FP8 = torch.float8_e4m3fn
+FP8_MAX = torch.finfo(FP8).max  # 448
+MIN_PARAMS_TO_QUANTIZE = 1_000_000  # camadas pequenas (gates, etc.) ficam em bf16
+
+
+class FP8Linear(nn.Module):
+    """Linear com pesos em FP8 + escala por linha; computa em bf16."""
+
+    def __init__(self, linear: nn.Linear, device: torch.device, compute_dtype=torch.bfloat16):
+        super().__init__()
+        self.in_features = linear.in_features
+        self.out_features = linear.out_features
+        self.compute_dtype = compute_dtype
+        w = linear.weight.detach().to(device=device, dtype=torch.float32)
+        scale = (w.abs().amax(dim=1, keepdim=True) / FP8_MAX).clamp(min=1e-12)
+        self.register_buffer("weight_fp8", (w / scale).to(FP8))
+        self.register_buffer("weight_scale", scale.to(compute_dtype))
+        bias = linear.bias.detach().to(device=device, dtype=compute_dtype) if linear.bias is not None else None
+        self.register_buffer("bias", bias)
+
+    @property
+    def weight(self) -> torch.Tensor:
+        # Só para código externo que inspeciona .weight (dtype, device, shape).
+        return self.weight_fp8.to(self.compute_dtype) * self.weight_scale
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        w = self.weight_fp8.to(self.compute_dtype) * self.weight_scale
+        return F.linear(x.to(self.compute_dtype), w, self.bias)
+
+    def extra_repr(self) -> str:
+        return f"in={self.in_features}, out={self.out_features}, fp8"
+
+
+def quantize_to_fp8_(model: nn.Module, device: torch.device) -> tuple[int, int]:
+    """Troca, no sítio, cada nn.Linear grande por FP8Linear já na GPU.
+    Vai camada a camada para a RAM e a VRAM nunca terem o modelo inteiro em bf16."""
+    targets = [
+        (name, mod)
+        for name, mod in model.named_modules()
+        if isinstance(mod, nn.Linear) and mod.weight.numel() >= MIN_PARAMS_TO_QUANTIZE
+    ]
+    n_params = 0
+    for name, mod in targets:
+        parent_name, _, child = name.rpartition(".")
+        parent = model.get_submodule(parent_name) if parent_name else model
+        n_params += mod.weight.numel()
+        setattr(parent, child, FP8Linear(mod, device))
+        del mod
+    gc.collect()
+    return len(targets), n_params
+
+
+def load_vlm(model_dir: str | Path, precision: str = "fp8", processor_dir: str | Path | None = None):
+    """Carrega modelo + processor. precision: 'fp8' (defeito) ou 'bf16'.
+    processor_dir: só se o processor não estiver na pasta do modelo."""
+    from transformers import AutoProcessor
+
+    try:
+        from transformers import AutoModelForImageTextToText as AutoVLM
+    except ImportError:  # versões mais novas
+        from transformers import AutoModelForMultimodalLM as AutoVLM
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("GPU não disponível no PyTorch (ROCm). Corre scripts/00_check_system.sh")
+    device = torch.device("cuda")
+
+    if precision == "bf16":
+        model = AutoVLM.from_pretrained(model_dir, dtype=torch.bfloat16, device_map="cuda")
+    else:
+        # Carrega em bf16 na RAM (~19 GB para o 9B), quantiza camada a camada
+        # diretamente para a GPU, e só depois move o resto (embeddings, norms, convs).
+        model = AutoVLM.from_pretrained(model_dir, dtype=torch.bfloat16, device_map="cpu")
+        n, p = quantize_to_fp8_(model, device)
+        model.to(device)
+        gc.collect()
+        print(f"FP8: {n} camadas Linear ({p / 1e9:.2f}B params) quantizadas")
+
+    model.eval()
+    processor = AutoProcessor.from_pretrained(processor_dir or model_dir)
+    used = torch.cuda.memory_allocated() / 2**30
+    print(f"VLM carregada ({precision}), VRAM em uso: {used:.1f} GiB")
+    return model, processor
+
+
+@torch.inference_mode()
+def ask(model, processor, image: Image.Image | None, prompt: str, max_new_tokens: int = 256,
+        max_side: int = 1280) -> str:
+    """Uma pergunta, com ou sem imagem. Modo 'thinking' desligado, saída determinística."""
+    content = []
+    if image is not None:
+        image = image.convert("RGB")
+        image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        content.append({"type": "image", "image": image})
+    content.append({"type": "text", "text": prompt})
+    messages = [{"role": "user", "content": content}]
+
+    template_kwargs = dict(tokenize=True, add_generation_prompt=True, return_dict=True, return_tensors="pt")
+    try:
+        inputs = processor.apply_chat_template(messages, enable_thinking=False, **template_kwargs)
+    except TypeError:  # modelos sem modo thinking (ex.: Qwen3-VL)
+        inputs = processor.apply_chat_template(messages, **template_kwargs)
+    inputs = inputs.to(model.device)
+
+    out = model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False, repetition_penalty=1.05)
+    text = processor.batch_decode(out[:, inputs["input_ids"].shape[1]:], skip_special_tokens=True)[0]
+    if "</think>" in text:  # rede de segurança caso o template ignore enable_thinking
+        text = text.split("</think>", 1)[1]
+    return text.strip()

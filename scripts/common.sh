@@ -41,3 +41,10 @@ load_models() {
   VAE_PATH="$QWEN_DIR/vae"
   TE_PATH="$QWEN_DIR/text_encoder"
 }
+
+load_vlm_dir() {
+  [[ -f "$MODELS_ENV" ]] || die "Falta models.env. Corre primeiro: scripts/02_download_models.sh"
+  # shellcheck disable=SC1090
+  source "$MODELS_ENV"
+  [[ -n "${VLM_DIR:-}" && -d "$VLM_DIR" ]] || die "VLM em falta. Corre scripts/02_download_models.sh (sem --no-vlm)."
+}
