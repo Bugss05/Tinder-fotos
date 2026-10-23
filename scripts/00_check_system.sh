@@ -13,7 +13,7 @@ check "rocminfo instalado (ROCm)"    'command -v rocminfo'
 # por SIGPIPE quando o grep sai cedo, mesmo que a GPU lá esteja.
 rocm_out=$(rocminfo 2>&1 || true)
 check "GPU gfx1201 (RX 9070 XT) visível no ROCm" 'grep -q gfx1201 <<<"$rocm_out"'
-gpus=$(grep -o 'gfx[0-9a-f]\+' <<<"$rocm_out" | sort -u | tr '\n' ' ')
+gpus=$(grep -o 'gfx[0-9a-f]\+' <<<"$rocm_out" | grep -vx 'gfx[0-9]\{2\}' | sort -u | tr '\n' ' ')  # ignora 'gfx12' de 'gfx12-generic'
 echo "  GPUs vistas pelo ROCm: ${gpus:-nenhuma}"
 if [[ -z "$gpus" ]]; then
   echo "  diagnóstico:"
@@ -26,6 +26,7 @@ check "utilizador no grupo render"   'id -nG | grep -qw render'
 check "utilizador no grupo video"    'id -nG | grep -qw video'
 check "uv instalado"                 'command -v uv'
 check "git instalado"                'command -v git'
+check "curl instalado"               'command -v curl'
 
 if command -v rocminfo >/dev/null; then
   rocm_ver=$(cat /opt/rocm/.info/version 2>/dev/null || echo "?")
@@ -63,7 +64,8 @@ else
 Algo falhou. Pistas:
   - ROCm: instala com o amdgpu-install da AMD (ROCm 7.2.x, Ubuntu 24.04 é o caminho mais testado).
   - Grupos: sudo usermod -aG render,video "$USER"  e depois reinicia a sessão.
-  - uv:    curl -LsSf https://astral.sh/uv/install.sh | sh
+  - curl:  sudo apt install curl   (não uses o snap)
+  - uv:    curl -LsSf https://astral.sh/uv/install.sh | sh   e depois: source ~/.local/bin/env
 EOF
   exit 1
 fi
