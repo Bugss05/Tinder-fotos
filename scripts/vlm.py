@@ -15,6 +15,7 @@ Custo: um pouco mais lento que bf16 puro; perda de qualidade desprezável
 from __future__ import annotations
 
 import gc
+import re
 import time
 from pathlib import Path
 
@@ -169,7 +170,9 @@ def ask(model, processor, image: Image.Image | None, prompt: str, max_new_tokens
     if debug:
         ids = inputs["input_ids"][0]
         print("  [debug] texto enviado ao modelo:")
-        print("    " + processor.decode(ids, skip_special_tokens=False).replace("\n", "\n    ")[:4000])
+        text = processor.decode(ids, skip_special_tokens=False)
+        text = re.sub(r"(<\|image_pad\|>)+", lambda m: f"<|image_pad|> x{m.group(0).count('<|image_pad|>')}", text)
+        print("    " + text.replace("\n", "\n    "))
         if image is not None:
             grid = inputs.get("image_grid_thw")
             print(f"  [debug] imagem: {image.size[0]}x{image.size[1]} px | grelha de patches (t,h,w): "

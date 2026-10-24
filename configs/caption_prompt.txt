@@ -1,6 +1,6 @@
 Write one caption for this photo. It will be used to train an image model to learn the identity of the man in it.
 
-Describe, in one or two plain English sentences:
+Describe, in at most two plain English sentences:
 - framing: close-up, head and shoulders, half body or full body, and the camera angle
 - what he is doing, his pose, his facial expression and where he is looking
 - clothing and accessories, with colors (say "shirtless" if he has no shirt)
@@ -10,6 +10,7 @@ Describe, in one or two plain English sentences:
 
 Do NOT describe his face, eyes, nose, skin, body shape, muscles, age, ethnicity, hair or beard.
 Do NOT judge attractiveness. Do NOT start with "The image shows" or "This photo".
+State only what is clearly visible. Do not hedge or guess ("appears", "suggests", "might", "possibly"); if unsure, leave it out.
 Refer to him as "the man" the first time.
 {hints}
 Output only the caption.

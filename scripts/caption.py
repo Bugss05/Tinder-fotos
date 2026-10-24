@@ -89,7 +89,8 @@ def build_prompt(template: str, hint: str | None) -> str:
 
 def audit(caption: str, hint: str | None) -> list[str]:
     low, allowed = caption.lower(), (hint or "").lower()
-    return [w for w in SUSPECT if re.search(rf"\b{re.escape(w)}\b", low) and w not in allowed]
+    # (?<!-): "neutral-toned background", "well-built shelf"... não são sobre o corpo.
+    return [w for w in SUSPECT if re.search(rf"(?<!-)\b{re.escape(w)}\b", low) and w not in allowed]
 
 
 def main() -> int:
