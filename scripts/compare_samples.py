@@ -20,6 +20,8 @@ LABEL_W = 220
 
 
 def step_of(name: str) -> int:
+    if name.startswith("base"):
+        return -1  # modelo sem LoRA primeiro, como referência
     m = re.search(r"step(\d+)", name)
     return int(m.group(1)) if m else 10**9  # o final (sem "step") vai para o fim
 
