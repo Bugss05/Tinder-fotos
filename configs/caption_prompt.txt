@@ -6,11 +6,16 @@ Describe, in at most two plain English sentences:
 - clothing and accessories, with colors (say "shirtless" if he has no shirt)
 - the location and background
 - the lighting and time of day
-- whether it is a selfie or a mirror photo
+- only if it is a selfie or a mirror photo, say so (otherwise do not mention it)
 
 Do NOT describe his face, eyes, nose, skin, body shape, muscles, age, ethnicity, hair or beard.
 Do NOT judge attractiveness. Do NOT start with "The image shows" or "This photo".
 State only what is clearly visible. Do not hedge or guess ("appears", "suggests", "might", "possibly"); if unsure, leave it out.
 Refer to him as "the man" the first time.
+
+Examples of the style wanted (do not copy their content):
+- A close-up of the man smiling at the camera, wearing a light blue collared shirt, in front of a white wall in soft window light.
+- A full body shot of the man walking on a beach at sunset, wearing black shorts and a white t-shirt, seen from a low angle.
+- A mirror selfie of the man in a gym, shirtless, holding a phone, under bright fluorescent light.
 {hints}
 Output only the caption.
