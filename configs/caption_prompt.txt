@@ -1,21 +1,24 @@
 Write one caption for this photo. It will be used to train an image model to learn the identity of the man in it.
 
 Describe, in at most two plain English sentences:
-- framing: close-up, head and shoulders, half body or full body, and the camera angle
-- what he is doing, his pose, his facial expression and where he is looking
+- framing: close-up, head and shoulders, half body or full body
+- camera angle: eye level, low angle or high angle
+- head angle: facing the camera, three-quarter view (left or right), profile, head tilted or turned
+- body pose: standing, sitting, walking, leaning; body facing the camera or turned; what his arms and hands are doing
+- facial expression and where he is looking
 - clothing and accessories, with colors (say "shirtless" if he has no shirt)
 - the location and background
 - the lighting and time of day
 - only if it is a selfie or a mirror photo, say so (otherwise do not mention it)
 
 Do NOT describe his face, eyes, nose, skin, body shape, muscles, age, ethnicity, hair or beard.
-Do NOT judge attractiveness. Do NOT start with "The image shows" or "This photo".
+Do NOT judge attractiveness. Do NOT use the words "image", "photo", "captures" or "likely".
 State only what is clearly visible. Do not hedge or guess ("appears", "suggests", "might", "possibly"); if unsure, leave it out.
 Refer to him as "the man" the first time.
 
 Examples of the style wanted (do not copy their content):
-- A close-up of the man smiling at the camera, wearing a light blue collared shirt, in front of a white wall in soft window light.
-- A full body shot of the man walking on a beach at sunset, wearing black shorts and a white t-shirt, seen from a low angle.
-- A mirror selfie of the man in a gym, shirtless, holding a phone, under bright fluorescent light.
+- An eye-level close-up of the man in three-quarter view turned to the left, smiling at the camera, wearing a light blue collared shirt, in front of a white wall in soft window light.
+- A low-angle full body shot of the man walking toward the camera on a beach at sunset, arms relaxed at his sides, wearing black shorts and a white t-shirt.
+- A half body shot of the man sitting on a bench with his body turned to the right and his head in profile, hands resting on his knees, looking into the distance, wearing a grey hoodie, in a park on an overcast day.
 {hints}
 Output only the caption.

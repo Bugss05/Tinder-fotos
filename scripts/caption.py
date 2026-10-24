@@ -35,6 +35,7 @@ SUSPECT = [
     "eye", "eyes", "skin", "complexion", "muscular", "muscles", "athletic", "toned", "slim",
     "build", "handsome", "attractive", "young", "years old", "hair", "haircut", "beard",
     "stubble", "jawline", "ethnic", "caucasian", "the image", "this photo", "photo shows",
+    "likely", "appears", "suggests", "might", "possibly",
 ]
 
 
