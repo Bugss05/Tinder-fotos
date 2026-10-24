@@ -135,6 +135,7 @@ Converte o checkpoint escolhido e copia-o para `~/ComfyUI/models/loras/`. Ver se
 | `scripts/05_cache.sh` | Gera o `dataset.toml` e faz a cache dos latents (VAE) e dos embeddings (text encoder Qwen3-VL-8B em fp8). |
 | `scripts/06_train_lora.sh` | Treina o LoRA com o DiT em fp8, gradient checkpointing e block swap. Aceita `--resume`. |
 | `scripts/07_generate.sh` | Gera imagens de teste com um checkpoint e uma força (`multiplier`) à escolha. |
+| `scripts/compare_samples.py` | Junta as imagens de teste de todos os checkpoints numa grelha (`samples/comparacao.jpg`): uma linha por checkpoint, uma coluna por prompt. |
 | `scripts/08_export_comfyui.sh` | Converte o LoRA para o formato que o ComfyUI lê por inteiro e copia-o para lá (ver secção 8). |
 
 ## 4. Fotos: o que importa
